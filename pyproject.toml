@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+# e2e tests run by default; tests/e2e/conftest.py skips them when no
+# Streamlit server is reachable. Exclude them with -m "not e2e".
+addopts = "-v --tb=short"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "unit: fast isolated unit tests for data and plotting modules",
+    "component: headless streamlit app state and widget tests",
+    "e2e: end-to-end browser automation tests using playwright",
+]
+
+[tool.coverage.run]
+source = ["data_loader", "visualizations", "styling"]
+omit = ["tests/*"]

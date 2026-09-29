@@ -1,0 +1,6 @@
+# The custom gradient background in styling.py is dark, so force Streamlit's
+# dark theme; otherwise viewers whose OS/browser is in light mode get dark
+# text on the dark background.
+[theme]
+base = "dark"
+primaryColor = "#3b82f6"

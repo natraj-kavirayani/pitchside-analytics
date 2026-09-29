@@ -1,0 +1,14 @@
+{
+  // statsbombpy ships no type stubs (no py.typed marker), so every value it
+  // returns (sb.competitions(), sb.matches(), sb.events(), sb.lineups()) is
+  // typed Unknown to Pyright/Pylance. That is expected for this dependency,
+  // not a defect in this codebase, so the "missing type stubs" warning is
+  // disabled project-wide rather than adding # type: ignore to every call
+  // site. "basic" (Pylance's own default) is kept explicit here so this
+  // file documents the intended mode instead of relying on whatever a given
+  // machine's settings happen to be.
+  "typeCheckingMode": "basic",
+  "reportMissingTypeStubs": false,
+  "useLibraryCodeForTypes": true,
+  "exclude": ["venv", "**/__pycache__"]
+}
