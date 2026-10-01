@@ -8,8 +8,13 @@ fixture checks for a reachable server up front with a plain socket
 connection and skips with a clear reason when there isn't one. Skipped is
 not the same as passed: pytest reports these distinctly, so a missing
 server never looks like the app was verified working.
+
+In CI a skip would still let the pipeline go green without a single
+browser test having run, so CI sets E2E_REQUIRE_SERVER=1 and a missing
+server becomes a hard failure instead.
 """
 
+import os
 import socket
 
 import pytest
@@ -28,8 +33,12 @@ def _server_is_up() -> bool:
 
 @pytest.fixture(autouse=True)
 def skip_if_no_local_streamlit_server():
-    if not _server_is_up():
-        pytest.skip(
-            f"No Streamlit server reachable at http://{STREAMLIT_HOST}:{STREAMLIT_PORT} - "
-            "start one with 'streamlit run app.py' before running the e2e suite."
-        )
+    if _server_is_up():
+        return
+    message = (
+        f"No Streamlit server reachable at http://{STREAMLIT_HOST}:{STREAMLIT_PORT} - "
+        "start one with 'streamlit run app.py' before running the e2e suite."
+    )
+    if os.environ.get("E2E_REQUIRE_SERVER") == "1":
+        pytest.fail(message)
+    pytest.skip(message)

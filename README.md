@@ -1,6 +1,6 @@
 # Pitchside Analytics
 
-[![Tests](https://github.com/natraj-kavirayani/premier-league-analytics/actions/workflows/tests.yml/badge.svg)](https://github.com/natraj-kavirayani/premier-league-analytics/actions/workflows/tests.yml)
+[![Tests](https://github.com/natraj-kavirayani/pitchside-analytics/actions/workflows/tests.yml/badge.svg)](https://github.com/natraj-kavirayani/pitchside-analytics/actions/workflows/tests.yml)
 
 A Streamlit app for exploring football matches through StatsBomb's free
 open event data: shot maps, an xG timeline, pass maps, pass networks,
@@ -52,28 +52,36 @@ Cups, AFCON 2023, FA WSL, Messi's La Liga seasons).
 
 ## Testing
 
+The test strategy (what can go wrong, why each layer exists, what is
+deliberately not tested, and how AI was used) is in [TESTING.md](TESTING.md).
+
 ```bash
 pip install -r requirements.lock
-pytest                    # all tests; e2e ones skip unless a server is running
-pytest -m "not e2e"       # unit + component tests only (mocked data, no network)
-pytest --cov              # with coverage for data_loader, visualizations, styling
-pytest -m e2e             # browser tests only; needs `streamlit run app.py` first
+pytest                    # unit + component tests (mocked data, no network)
+pytest --cov              # same, with coverage for data_loader, visualizations, styling
+pytest -m e2e             # browser tests; needs `streamlit run app.py` first
 ```
 
-The e2e tests are skipped when no Streamlit server is reachable on port
-8501. Before running them, run `playwright install chromium` once and
+Before running the e2e tests, run `playwright install chromium` once and
 restart any Streamlit server already on port 8501, so the tests check the
-current code. GitHub Actions runs the unit and component tests
-(`-m "not e2e"`) on every push and pull request.
+current code. Locally they are skipped with a clear reason when no server
+is reachable.
+
+GitHub Actions runs on every push and pull request: first the unit and
+component tests, then, if those pass, a second job that starts the app,
+waits for its health check and runs the e2e tests. In CI a missing server
+fails the job instead of skipping, and failed e2e tests upload screenshots,
+Playwright traces and the app log as a build artifact.
 
 | Folder | Marker | What it covers |
 | --- | --- | --- |
 | `tests/unit/` | `unit` | `data_loader.py`, `visualizations.py` and `styling.py`, called directly with mocked StatsBomb responses. |
 | `tests/component/` | `component` | The whole app via Streamlit's `AppTest`, with every `data_loader` call mocked. |
-| `tests/e2e/` | `e2e` | Playwright checks against a running server on `localhost:8501`; skipped with a clear reason if no server is running. |
+| `tests/e2e/` | `e2e` | Playwright tests against a running server on `localhost:8501`: smoke checks of every tab, plus user journeys through a real match (the 2022 World Cup final) on live StatsBomb data. |
 
 Shared mock fixtures (competitions, matches, events, lineups) live in
-`tests/conftest.py`. No test reaches StatsBomb's servers.
+`tests/conftest.py`. The unit and component tests never reach StatsBomb's
+servers; only the e2e user journeys use live data.
 
 ## Deploying
 

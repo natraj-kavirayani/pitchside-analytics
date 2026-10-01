@@ -21,6 +21,10 @@ dist/
 .coverage
 htmlcov/
 
+# Playwright failure artifacts and the app log written by CI
+test-results/
+streamlit.log
+
 # Editor/OS junk
 .vscode/
 .idea/

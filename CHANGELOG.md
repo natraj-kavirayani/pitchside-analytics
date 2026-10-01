@@ -3,6 +3,34 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.0] - 2026-10-01
+
+### Added
+
+- E2E user-journey tests: select the 2022 World Cup final through the
+  sidebar, then check the shot map, the penalty shootout table on the xG
+  timeline, and both managers and starting XIs in Match details. They use
+  live StatsBomb data, so they also catch upstream data changes.
+- E2E job in GitHub Actions: runs after the unit and component tests,
+  starts the app, waits for its health check, and uploads screenshots,
+  Playwright traces and the app log when a test fails.
+- TESTING.md: quality risks, why each test layer exists, what is
+  deliberately not tested, and how AI was used.
+
+### Changed
+
+- E2E tests wait for Streamlit to finish re-running instead of acting
+  mid-rerun, which made dropdown selection flaky.
+- In CI (`E2E_REQUIRE_SERVER=1`), a missing app server fails the e2e
+  tests instead of skipping them.
+
+### Fixed
+
+- Plain `pytest` still ran the e2e tests when a server was on port 8501,
+  although 0.7.0 said otherwise; `pyproject.toml` now excludes them by
+  default.
+- README test badge pointed to the repository's old name.
+
 ## [0.7.0] - 2026-09-29
 
 - Planned: season-level aggregate stats, export charts as PNG.

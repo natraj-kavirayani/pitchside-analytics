@@ -4,9 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-# e2e tests run by default; tests/e2e/conftest.py skips them when no
-# Streamlit server is reachable. Exclude them with -m "not e2e".
-addopts = "-v --tb=short"
+# Plain `pytest` runs the fast unit and component layers only. The e2e
+# layer needs a running Streamlit server and live data, so it runs only
+# when asked for with `pytest -m e2e` (a later -m overrides this one).
+addopts = '-v --tb=short -m "not e2e"'
 testpaths = ["tests"]
 pythonpath = ["."]
 markers = [
@@ -17,4 +18,4 @@ markers = [
 
 [tool.coverage.run]
 source = ["data_loader", "visualizations", "styling"]
-omit = ["tests/*"]
+omit = ["tests/*"]
