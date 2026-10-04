@@ -21,9 +21,13 @@ dist/
 .coverage
 htmlcov/
 
-# Playwright failure artifacts and the app log written by CI
+# Playwright failure artifacts and the app logs written by CI
 test-results/
 streamlit.log
+streamlit-sample.log
+
+# Hypothesis example database
+.hypothesis/
 
 # Editor/OS junk
 .vscode/
