@@ -1,35 +1,24 @@
 """
 Shared fixtures for the whole test suite.
 
-All StatsBomb-shaped data here is hand-built and mocked - no test in this
-project makes a network call to StatsBomb's open-data GitHub repository.
-See tests/unit, tests/component, tests/e2e for how these fixtures are used.
+All StatsBomb-shaped data here is hand-built. Tests hand it to the code
+under test directly (analytics functions take frames) or through an
+``InMemorySource`` (the service and the app take a source), so nothing
+needs patching and no cache can leak between tests: each test builds its
+own source.
 """
 
 import pandas as pd
 import pytest
 
-import data_loader
+from pitchside.data.source import InMemorySource
+from pitchside.service import MatchService
 
-
-@pytest.fixture(autouse=True)
-def clear_data_loader_caches():
-    # data_loader's fetchers are wrapped in lru_cache, which persists across
-    # tests in the same process. Clear before and after every test so a
-    # mocked return value from one test can never leak into another.
-    data_loader.get_competitions.cache_clear()
-    data_loader.get_matches.cache_clear()
-    data_loader.get_events.cache_clear()
-    data_loader.get_lineups.cache_clear()
-    yield
-    data_loader.get_competitions.cache_clear()
-    data_loader.get_matches.cache_clear()
-    data_loader.get_events.cache_clear()
-    data_loader.get_lineups.cache_clear()
+MATCH_ID = 12345
 
 
 @pytest.fixture
-def mock_competitions_df() -> pd.DataFrame:
+def competitions_frame() -> pd.DataFrame:
     return pd.DataFrame([
         {
             "competition_id": 2,
@@ -49,10 +38,10 @@ def mock_competitions_df() -> pd.DataFrame:
 
 
 @pytest.fixture
-def mock_matches_df() -> pd.DataFrame:
+def matches_frame() -> pd.DataFrame:
     return pd.DataFrame([
         {
-            "match_id": 12345,
+            "match_id": MATCH_ID,
             "home_team": "Home Team",
             "away_team": "Away Team",
             "home_score": 2,
@@ -75,7 +64,7 @@ def mock_matches_df() -> pd.DataFrame:
 
 
 @pytest.fixture
-def mock_events_df() -> pd.DataFrame:
+def events_frame() -> pd.DataFrame:
     return pd.DataFrame([
         {
             "type": "Pass",
@@ -153,10 +142,10 @@ def mock_events_df() -> pd.DataFrame:
 
 
 @pytest.fixture
-def mock_lineups_dict() -> dict[str, pd.DataFrame]:
+def lineups_dict() -> dict[str, pd.DataFrame]:
     # Mirrors the shape of sb.lineups(): one DataFrame per team, each player
     # carrying a "positions" list. Player D has no "Starting XI" entry, so
-    # get_starting_xi() must leave them out.
+    # starting_xi() must leave them out.
     home_df = pd.DataFrame([
         {
             "player_name": "Player A",
@@ -182,3 +171,35 @@ def mock_lineups_dict() -> dict[str, pd.DataFrame]:
         },
     ])
     return {"Home Team": home_df, "Away Team": away_df}
+
+
+@pytest.fixture
+def shootout_events() -> pd.DataFrame:
+    """A 1-1 draw after extra time, followed by a two-kick shootout (period 5)."""
+    def shot(team, player, period, minute, xg, outcome):
+        return {"type": "Shot", "team": team, "player": player, "period": period,
+                "minute": minute, "second": 0, "shot_statsbomb_xg": xg, "shot_outcome": outcome,
+                "shot_type": "Penalty" if period == 5 else "Open Play"}
+    return pd.DataFrame([
+        shot("Home Team", "Player A", 1, 20, 0.30, "Goal"),
+        shot("Away Team", "Player X", 4, 110, 0.10, "Goal"),
+        shot("Home Team", "Player B", 5, 121, 0.78, "Goal"),
+        shot("Away Team", "Player Y", 5, 121, 0.78, "Saved"),
+    ])
+
+
+@pytest.fixture
+def frames_source(competitions_frame, matches_frame, events_frame, lineups_dict) -> InMemorySource:
+    """The frames above as a data source. Both competitions list the same
+    two matches; only match 12345 has events and lineups."""
+    return InMemorySource(
+        competitions=competitions_frame,
+        matches={(2, 44): matches_frame, (11, 90): matches_frame},
+        events={MATCH_ID: events_frame},
+        lineups={MATCH_ID: lineups_dict},
+    )
+
+
+@pytest.fixture
+def frames_service(frames_source) -> MatchService:
+    return MatchService(frames_source, label="test frames")

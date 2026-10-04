@@ -4,18 +4,24 @@ build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
 minversion = "8.0"
-# Plain `pytest` runs the fast unit and component layers only. The e2e
-# layer needs a running Streamlit server and live data, so it runs only
-# when asked for with `pytest -m e2e` (a later -m overrides this one).
-addopts = '-v --tb=short -m "not e2e"'
+# Plain `pytest` runs every offline layer: unit, integration, contract
+# (sample data only) and component. The layers that need a running server
+# or the network run only when asked for: `pytest -m e2e` and
+# `pytest -m live` (a later -m overrides this one).
+addopts = '-v --tb=short -m "not e2e and not live"'
 testpaths = ["tests"]
 pythonpath = ["."]
 markers = [
-    "unit: fast isolated unit tests for data and plotting modules",
-    "component: headless streamlit app state and widget tests",
+    "unit: fast isolated tests of one module, no I/O",
+    "integration: MatchService wired to real sources and analytics, offline",
+    "contract: data sources checked against the column contract in pitchside.data.schema",
+    "live: needs network access to StatsBomb's open data (opt-in)",
+    "component: the whole Streamlit page run headlessly via AppTest",
     "e2e: end-to-end browser automation tests using playwright",
 ]
+# Open data needs no credentials; statsbombpy warns about that on every call.
+filterwarnings = ["ignore:credentials were not supplied"]
 
 [tool.coverage.run]
-source = ["data_loader", "visualizations", "styling"]
-omit = ["tests/*"]
+source = ["pitchside"]
+omit = ["tests/*"]
