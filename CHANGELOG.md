@@ -3,6 +3,52 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.9.0] - 2026-10-02
+
+### Added
+
+- Motion: tabs slide in when you switch between them and their content
+  follows in turn; the header logo, title and summary bars animate in;
+  buttons, dropdowns and charts respond on hover. All of it is off for
+  viewers whose device is set to reduce motion, and a **Reduce motion**
+  switch in the sidebar turns it off in the app.
+- Match overview above the tabs: each team's xG, shots, shots on target,
+  passes and pass completion, as split bars. It shows when a match is
+  picked, shrinks to a "Match overview" button once another tab is
+  opened, and the button shows it again.
+- Offline sample league (`PITCHSIDE_DATA_SOURCE=sample`): three made-up
+  matches, including a penalty shootout and a missing manager, for running
+  without network access and for deterministic browser tests.
+- Sidebar shows where the data comes from.
+- About is now a separate page (`/about`) instead of a tab, opened from a
+  text button at the bottom of the sidebar. Going back returns to the same
+  match and tab.
+- Test layers: property-based tests (Hypothesis) of the analytics,
+  integration tests of the service, data contract tests run against both
+  the sample and live StatsBomb data (`pytest -m live`), and e2e tests
+  that check the animations and tab colours in a real browser.
+
+### Changed
+
+- The code is now a layered `pitchside` package: data sources, pure
+  analytics, a `MatchService`, charts, and the UI. `data_loader.py`,
+  `visualizations.py` and `styling.py` are replaced by it, and `app.py`
+  is a thin entry point.
+- Tabs are lazy: only the open tab is computed, instead of every chart
+  on every interaction.
+- Tabs are defined in one registry (label, colour, renderer) that the tab
+  bar, the theme and the tests all read.
+- The page takes its data service as an argument, so component tests run
+  it on in-memory data with nothing patched.
+- Test coverage now includes the UI code.
+- CI starts a second, sample-data server for the e2e job and also runs
+  the live data contract tests there.
+
+### Fixed
+
+- The colour-coded tab underlines had stopped showing since Streamlit
+  1.64 replaced its tab component.
+
 ## [0.8.0] - 2026-10-01
 
 ### Added
