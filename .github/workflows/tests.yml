@@ -20,14 +20,14 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.lock
 
-      # Unit and component tests only: every StatsBomb call is mocked, so
-      # this needs no network access. The e2e suite runs in its own job.
+      # Every offline layer: unit, integration, contract (sample data) and
+      # component. No network access; the e2e and live tests run below.
       - name: Run tests
-        run: pytest -m "not e2e" --cov --cov-report=term-missing
+        run: pytest --cov --cov-report=term-missing
 
   e2e:
-    # Browser tests are slow and use live data, so only run them once the
-    # fast layers pass.
+    # Browser tests are slow and partly use live data, so only run them
+    # once the fast layers pass.
     needs: test
     runs-on: ubuntu-latest
     env:
@@ -48,27 +48,35 @@ jobs:
       - name: Install Playwright browser
         run: playwright install --with-deps chromium
 
-      - name: Start app
+      # Two servers: live StatsBomb data for the user journeys, and the
+      # offline sample league so the smoke and motion tests see the same
+      # data on every run.
+      - name: Start apps
         run: |
           nohup streamlit run app.py --server.headless true --server.port 8501 \
             > streamlit.log 2>&1 &
+          PITCHSIDE_DATA_SOURCE=sample nohup streamlit run app.py \
+            --server.headless true --server.port 8502 > streamlit-sample.log 2>&1 &
 
-      - name: Wait for app health check
+      - name: Wait for app health checks
         run: |
-          for i in $(seq 1 60); do
-            if curl -fsS http://localhost:8501/_stcore/health > /dev/null; then
-              echo "App is up"
-              exit 0
-            fi
-            sleep 1
+          for port in 8501 8502; do
+            for i in $(seq 1 60); do
+              if curl -fsS http://localhost:$port/_stcore/health > /dev/null; then
+                echo "App on port $port is up"
+                continue 2
+              fi
+              sleep 1
+            done
+            echo "App on port $port did not become healthy within 60 seconds"
+            cat streamlit.log streamlit-sample.log
+            exit 1
           done
-          echo "App did not become healthy within 60 seconds"
-          cat streamlit.log
-          exit 1
 
-      - name: Run e2e tests
+      # "live" adds the data contract checks against StatsBomb's open data.
+      - name: Run e2e and live tests
         run: >
-          pytest -m e2e
+          pytest -m "e2e or live"
           --browser chromium
           --screenshot only-on-failure
           --tracing retain-on-failure
@@ -82,5 +90,6 @@ jobs:
           path: |
             test-results/
             streamlit.log
+            streamlit-sample.log
           if-no-files-found: ignore
           retention-days: 14
