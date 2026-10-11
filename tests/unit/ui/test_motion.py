@@ -16,11 +16,16 @@ from pitchside.ui.motion import (
     ANIMATIONS,
     KEYFRAMES,
     MAX_SETTLE_MS,
+    MORPH_MS,
+    OVERVIEW_TRANSITIONS,
     PANEL,
     TRANSITIONS,
     Animation,
+    Transition,
     motion_css,
 )
+from pitchside.ui.overview import CLOSED as OVERVIEW_CLOSED
+from pitchside.ui.overview import STRIP as OVERVIEW_STRIP
 
 
 @pytest.mark.unit
@@ -48,9 +53,10 @@ def test_every_animation_settles_in_time(animation):
 @pytest.mark.unit
 @pytest.mark.parametrize("name", KEYFRAMES)
 def test_keyframes_end_fully_visible_and_in_place(name):
-    """Animations use fill-mode "both", so the last frame is what stays on
-    screen. Ending anywhere but opacity 1 / no transform would leave
-    content faded or displaced."""
+    """Animations use fill mode "backwards", so after the last frame the
+    element's own styles take over. If the last frame differed from them
+    (anything but opacity 1 / no transform), content would visibly jump
+    at the end."""
     final_frame = KEYFRAMES[name].split("to {")[1].rstrip(" }")
     declarations = (d.split(":", 1) for d in final_frame.split(";") if d.strip())
     end = {prop.strip(): value.strip() for prop, value in declarations}
@@ -112,5 +118,49 @@ def test_css_contains_every_rule():
 
 
 @pytest.mark.unit
-def test_transitions_are_quick():
-    assert all(t.duration_ms <= 300 for t in TRANSITIONS)
+def test_feedback_transitions_are_quick():
+    """Hover and focus feedback has to feel instant."""
+    feedback = [t for t in TRANSITIONS if t not in OVERVIEW_TRANSITIONS]
+    assert feedback and all(t.settle_ms <= 300 for t in feedback)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("transition", OVERVIEW_TRANSITIONS, ids=lambda t: t.selector)
+def test_overview_transitions_settle_in_time(transition):
+    assert 0 < transition.settle_ms <= MAX_SETTLE_MS
+
+
+@pytest.mark.unit
+def test_overview_box_changes_size_and_shape():
+    """The strip shrinks into the pill (and the content below follows its
+    height), rather than just fading out."""
+    strip_rules = [t for t in OVERVIEW_TRANSITIONS if t.selector.endswith(OVERVIEW_STRIP)]
+    assert len(strip_rules) == 2, "One timing for opening, one for closing."
+    for rule in strip_rules:
+        assert {"width", "height", "border-radius"} <= set(rule.properties)
+        assert rule.settle_ms >= MORPH_MS
+
+
+@pytest.mark.unit
+def test_closing_hides_the_strip_only_after_it_has_shrunk():
+    closing = next(t for t in OVERVIEW_TRANSITIONS if t.selector == f"{OVERVIEW_CLOSED} {OVERVIEW_STRIP}")
+    assert "visibility 0ms" in closing.css() and f"{MORPH_MS}ms;" in closing.css()
+
+
+@pytest.mark.unit
+def test_transition_timing_overrides_one_property():
+    t = Transition(".x", ("width", "opacity"), 400, timing=(("opacity", 100, 300),))
+    assert "width 400ms" in t.css() and t.css().count("ms") == 3
+    assert t.settle_ms == 400
+
+
+@pytest.mark.unit
+def test_entrance_animations_leave_properties_free_for_transitions():
+    """Fill mode "both" would pin opacity/transform after the animation,
+    and the overview's transitions would silently never run."""
+    assert all(a.css().rstrip(" }").split(";")[0].endswith("backwards") for a in ANIMATIONS)
+
+
+@pytest.mark.unit
+def test_height_can_animate_to_and_from_auto():
+    assert "interpolate-size: allow-keywords" in motion_css()

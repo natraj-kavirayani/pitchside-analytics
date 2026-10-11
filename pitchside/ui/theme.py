@@ -23,6 +23,7 @@ from collections.abc import Sequence
 
 import streamlit as st
 
+from pitchside.ui.overview import LAYOUT_CSS as OVERVIEW_LAYOUT_CSS
 from pitchside.viz.palette import INK, MUTED_INK
 
 # A small hand-drawn logo: a stylised football on the left, a rising bar
@@ -136,7 +137,7 @@ def tab_accent_css(accents: Sequence[str]) -> str:
 
 def theme_css(accents: Sequence[str]) -> str:
     """The full static stylesheet, as a ``<style>`` block for st.markdown()."""
-    return f"<style>\n{BASE_CSS}\n{tab_accent_css(accents)}\n</style>"
+    return f"<style>\n{BASE_CSS}\n{tab_accent_css(accents)}\n{OVERVIEW_LAYOUT_CSS}\n</style>"
 
 
 def apply_theme(accents: Sequence[str]) -> None:

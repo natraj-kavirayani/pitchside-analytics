@@ -65,14 +65,20 @@ def test_tab_switch_mounts_a_new_panel_that_animates_in(sample_page: Page):
     switch, so the CSS entrance animation replays. If a Streamlit upgrade
     started reusing the panel, the transition would silently stop."""
     sample_page.locator(PANEL).evaluate("el => { window.__previousPanel = el; }")
+    # A finished animation leaves getAnimations() (fill mode "backwards"),
+    # so listen for it finishing instead.
+    sample_page.evaluate("""() => {
+        window.__panelAnimations = [];
+        document.addEventListener('animationend', e => {
+            if (e.target.matches('[data-testid=stTabPanel][role=tabpanel]'))
+                window.__panelAnimations.push(e.animationName);
+        });
+    }""")
     open_tab(sample_page, "xG timeline")
     assert sample_page.locator(PANEL).evaluate("el => el !== window.__previousPanel")
     assert panel_animation(sample_page) == "ps-panel-in"
-    played = sample_page.locator(PANEL).evaluate(
-        "el => el.getAnimations().filter(a => a.animationName === 'ps-panel-in')"
-        ".map(a => a.playState)"
-    )
-    assert played and set(played) <= {"running", "finished"}
+    sample_page.wait_for_function("() => window.__panelAnimations.includes('ps-panel-in')",
+                                  timeout=SETTLE_TIMEOUT_MS)
 
 
 @pytest.mark.e2e
@@ -191,15 +197,91 @@ def test_text_buttons_have_no_pill_border(sample_page: Page):
 
 # --- Match overview ---------------------------------------------------------------------
 
-@pytest.mark.e2e
-def test_overview_button_rises_in_and_the_strip_replays_when_reopened(sample_page: Page):
-    open_tab(sample_page, "xG timeline")
-    button = sample_page.locator(".st-key-overview_button")
-    expect(button).to_have_css("animation-name", "ps-rise")
+# Records, on every animation frame for ``ms``, the overview's height, the
+# strip's width and where the tab bar starts, so a test can see the shape
+# of the motion and not just where it ends.
+START_RECORDING = """ms => {
+  window.__frames = null;
+  const frames = [], t0 = performance.now();
+  const tick = () => {
+    const box = document.querySelector('.st-key-ps-overview').getBoundingClientRect();
+    const strip = document.querySelector('.st-key-ps-overview .ps-summary').getBoundingClientRect();
+    const tabs = document.querySelector('[role=tablist]').getBoundingClientRect();
+    frames.push({box: box.height, strip: strip.width, tabs: tabs.top});
+    if (performance.now() - t0 < ms) requestAnimationFrame(tick); else window.__frames = frames;
+  };
+  requestAnimationFrame(tick);
+}"""
 
-    sample_page.get_by_role("button", name="Match overview").click()
-    wait_until_idle(sample_page)
-    rows = sample_page.locator(".ps-stat")
-    expect(rows.first).to_have_css("animation-name", "ps-rise")
+
+def record_frames(page: Page, action, ms: int = 2500) -> list[dict]:
+    page.evaluate(START_RECORDING, ms)
+    action()
+    page.wait_for_function("() => window.__frames", timeout=ms + 5000)
+    return page.evaluate("() => window.__frames")
+
+
+def in_between(frames: list[dict]) -> list[dict]:
+    """Frames where the overview was neither at its start nor its end size."""
+    start, end = frames[0]["box"], frames[-1]["box"]
+    return [f for f in frames if min(start, end) + 1 < f["box"] < max(start, end) - 1]
+
+
+def minimize(page: Page) -> None:
+    page.get_by_role("button", name="Minimize").click()
+
+
+def reopen(page: Page) -> None:
+    page.get_by_role("button", name="Match overview").click()
+
+
+@pytest.mark.e2e
+def test_minimize_shrinks_the_box_while_the_tabs_move_up(sample_page: Page):
     wait_for_motion_to_settle(sample_page)
-    assert rows.evaluate_all("els => els.every(e => getComputedStyle(e).opacity === '1')")
+    frames = record_frames(sample_page, lambda: minimize(sample_page))
+    first, last = frames[0], frames[-1]
+    assert last["box"] < first["box"] / 3 and last["strip"] < first["strip"] / 2
+
+    moving = in_between(frames)
+    assert len(moving) >= 3, "Expected a smooth change over several frames, not a jump."
+    for f in moving:
+        assert last["strip"] < f["strip"] < first["strip"], "The box narrows as it shrinks."
+        # All at once: in every frame, the tabs have moved up by exactly
+        # as much as the overview has shrunk.
+        assert first["tabs"] - f["tabs"] == pytest.approx(first["box"] - f["box"], abs=2)
+
+
+@pytest.mark.e2e
+def test_the_box_ends_exactly_where_the_pill_is(sample_page: Page):
+    minimize(sample_page)
+    pill = sample_page.get_by_role("button", name="Match overview")
+    expect(pill).to_be_visible()
+    wait_for_motion_to_settle(sample_page)
+    sample_page.wait_for_timeout(800)  # transitions aren't in getAnimations() once done
+    strip_box = sample_page.locator(".st-key-ps-overview .ps-summary").bounding_box()
+    pill_box = pill.bounding_box()
+    assert strip_box and pill_box
+    for side in ("x", "y", "width", "height"):
+        assert strip_box[side] == pytest.approx(pill_box[side], abs=2), side
+
+
+@pytest.mark.e2e
+def test_the_pill_grows_back_while_the_tabs_move_down(sample_page: Page):
+    minimize(sample_page)
+    expect(sample_page.get_by_role("button", name="Match overview")).to_be_visible()
+    sample_page.wait_for_timeout(800)
+    frames = record_frames(sample_page, lambda: reopen(sample_page))
+    first, last = frames[0], frames[-1]
+    assert last["box"] > first["box"] * 3
+    moving = in_between(frames)
+    assert len(moving) >= 3
+    for f in moving:
+        assert f["tabs"] - first["tabs"] == pytest.approx(f["box"] - first["box"], abs=2)
+    expect(sample_page.get_by_role("group", name="Match summary")).to_be_visible()
+
+
+@pytest.mark.e2e
+def test_reduced_motion_switches_the_overview_at_once(reduced_motion_page: Page):
+    frames = record_frames(reduced_motion_page, lambda: minimize(reduced_motion_page))
+    assert frames[-1]["box"] < frames[0]["box"] / 3
+    assert in_between(frames) == [], "No in-between frames when motion is reduced."

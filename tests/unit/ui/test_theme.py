@@ -14,7 +14,7 @@ real browser for that.
 import pytest
 from streamlit.testing.v1 import AppTest
 
-from pitchside.ui.theme import LOGO_SVG, TAB, header_html, tab_accent_css, theme_css
+from pitchside.ui.theme import BASE_CSS, LOGO_SVG, TAB, header_html, tab_accent_css, theme_css
 
 ACCENTS = ["#ef4444", "#3b82f6", "#22c55e"]
 
@@ -48,8 +48,8 @@ def test_css_restores_icon_font_for_icon_elements(css):
 
 
 @pytest.mark.unit
-def test_css_has_pill_shaped_inputs_and_buttons(css):
-    assert css.count("border-radius: 999px") == 2, (
+def test_css_has_pill_shaped_inputs_and_buttons():
+    assert BASE_CSS.count("border-radius: 999px") == 2, (
         "Expected pill-shaped border-radius rules for both selectboxes and buttons."
     )
 
@@ -60,6 +60,12 @@ def test_text_buttons_are_not_pills(css):
     them look like the Shuffle button."""
     assert '.stButton > button:not([kind="tertiary"]) {' in css
     assert '.stButton > button[kind="tertiary"] {' in css
+
+
+@pytest.mark.unit
+def test_css_includes_the_overview_layout(css):
+    from pitchside.ui.overview import LAYOUT_CSS
+    assert LAYOUT_CSS in css
 
 
 @pytest.mark.unit

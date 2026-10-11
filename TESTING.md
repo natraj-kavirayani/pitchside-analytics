@@ -84,7 +84,11 @@ Animations are tested at two levels, for different reasons:
   that animates in, blocks enter in order, everything settles fully
   visible, each tab's indicator is in its accent colour, the summary bars
   end at the right proportions, and both the OS reduced-motion setting
-  and the in-app toggle switch it all off. They check outcomes, never
+  and the in-app toggle switch it all off. The match overview's shrink
+  is recorded frame by frame: it must pass through several in-between
+  sizes, the tabs must move up by exactly as much as the box shrinks in
+  every frame (so it all happens at once), and the box must end exactly
+  on the pill. They check outcomes, never
   pixels or frame timing, so a slow machine can't make them flake.
 
 ## What the deeper tests caught
@@ -108,6 +112,10 @@ having it:
   change, so the overview treated it as no selection. Found by an e2e
   test; the rule now reacts to any sidebar choice, and is a pure function
   with its own unit tests.
+- **The match overview waited for the chart.** The overview was drawn
+  after the open tab's chart, so its animation only started once the
+  chart was rebuilt. Found by recording the shrink frame by frame; it is
+  now drawn first.
 - **Float rounding** made a bar share 100.00000000000001%. Found by a
   property test on the first run.
 - **The sample league reused player names across teams**, so one team's

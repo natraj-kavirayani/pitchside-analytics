@@ -184,6 +184,14 @@ def test_overview_shrinks_to_a_button_when_a_tab_is_clicked(sample_page: Page):
 
 
 @pytest.mark.e2e
+def test_minimize_shrinks_the_overview_to_its_button(sample_page: Page):
+    sample_page.get_by_role("button", name="Minimize").click()
+    expect(overview_strip(sample_page)).to_have_count(0)
+    expect(overview_button(sample_page)).to_be_visible()
+    expect(sample_page.get_by_role("tab", name="Shot map")).to_have_attribute("aria-selected", "true")
+
+
+@pytest.mark.e2e
 def test_overview_button_brings_the_strip_back(sample_page: Page):
     open_tab(sample_page, "Pass network")
     overview_button(sample_page).click()

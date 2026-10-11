@@ -14,8 +14,10 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   switch in the sidebar turns it off in the app.
 - Match overview above the tabs: each team's xG, shots, shots on target,
   passes and pass completion, as split bars. It shows when a match is
-  picked, shrinks to a "Match overview" button once another tab is
-  opened, and the button shows it again.
+  picked. Its Minimize button, or opening another tab, shrinks it into a
+  pill-shaped "Match overview" button in one smooth motion, with the tabs
+  and chart moving up into the freed space at the same time; the pill
+  grows it back.
 - Offline sample league (`PITCHSIDE_DATA_SOURCE=sample`): three made-up
   matches, including a penalty shootout and a missing manager, for running
   without network access and for deterministic browser tests.

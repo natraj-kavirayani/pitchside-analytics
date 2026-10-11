@@ -19,6 +19,7 @@ from pitchside.data.source import InMemorySource
 from pitchside.service import DATA_SOURCE_ENV, MatchService
 from pitchside.ui.app import ABOUT_BUTTON_KEY, BACK_BUTTON_KEY, VIEW_KEY
 from pitchside.ui.overview import BUTTON_KEY as OVERVIEW_BUTTON_KEY
+from pitchside.ui.overview import MINIMIZE_KEY as OVERVIEW_MINIMIZE_KEY
 from pitchside.ui.sidebar import REDUCE_MOTION_KEY
 from pitchside.ui.views import VIEWS
 
@@ -64,11 +65,14 @@ def in_order(block) -> list:
 
 
 def overview_shown(at: AppTest) -> bool:
-    """True if the summary strip is on the page, False if only its button is."""
-    strip = 'class="ps-summary"' in markdown_text(at)
-    has_button = any(b.key == OVERVIEW_BUTTON_KEY for b in at.button)
-    assert strip != has_button, "Exactly one of the strip and its button should show."
-    return strip
+    """True if the overview is open, False if shrunk to its pill.
+
+    Both forms are always on the page (so the browser can animate between
+    them); the state marker says which one shows.
+    """
+    markers = [m.value for m in at.markdown if m.value.startswith('<span class="ps-overview-state"')]
+    assert len(markers) == 1
+    return 'data-open="true"' in markers[0]
 
 
 def open_about(at: AppTest) -> AppTest:
@@ -234,6 +238,28 @@ def test_overview_shrinks_to_a_button_once_another_tab_is_opened(at):
     button = at.button(key=OVERVIEW_BUTTON_KEY)
     assert button.label == "Match overview"
     assert VIEW_MARKERS["xG timeline"](at), "The tab itself still renders."
+
+
+@pytest.mark.component
+def test_minimize_button_shrinks_the_overview(at):
+    at.button(key=OVERVIEW_MINIMIZE_KEY).click()
+    at = open_view(at, "Shot map")  # AppTest doesn't re-send the open tab
+    assert not overview_shown(at)
+    assert VIEW_MARKERS["Shot map"](at)
+
+
+@pytest.mark.component
+def test_overview_draws_the_same_elements_open_or_closed(at):
+    """The browser can only animate between the two forms if every element
+    survives the rerun, so open and closed must draw the same elements."""
+    def kinds(at):
+        strip = [m for m in at.markdown if 'class="ps-summary"' in m.value]
+        keys = [b.key for b in at.button if b.key in {OVERVIEW_BUTTON_KEY, OVERVIEW_MINIMIZE_KEY}]
+        return len(strip), sorted(keys), len(at.markdown)
+
+    opened = kinds(at)
+    closed = kinds(open_view(at, "Pass map"))
+    assert opened == closed == (1, sorted([OVERVIEW_BUTTON_KEY, OVERVIEW_MINIMIZE_KEY]), opened[2])
 
 
 @pytest.mark.component

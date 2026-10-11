@@ -17,6 +17,7 @@ from streamlit.navigation.page import StreamlitPage
 from pitchside.service import MatchService
 from pitchside.ui.about import render_about
 from pitchside.ui.motion import apply_motion
+from pitchside.ui.overview import CONTAINER_KEY as OVERVIEW_KEY
 from pitchside.ui.overview import render_overview
 from pitchside.ui.sidebar import (
     PICK_PREFIX,
@@ -65,22 +66,21 @@ def match_page(service: MatchService, about: StreamlitPage) -> None:
         match = pick_match(service)
 
     st.subheader(match.label)
-    # Reserved above the tabs, but filled after them: whether the overview
-    # is open depends on which tab is open.
-    overview_slot = st.container()
+    # Drawn before the tabs, so a change to the overview reaches the browser
+    # (and starts animating) while the open tab's chart is still being
+    # built. The tab the viewer just picked is already in session state.
+    open_view = st.session_state.get(VIEW_KEY) or VIEWS[0].label
+    render_overview(st.container(key=OVERVIEW_KEY), service.summary(match.match_id),
+                    selection(match), open_view)
 
     # on_change="rerun" makes tabs lazy: only the selected tab's view runs,
     # instead of building every chart on every interaction.
     ctx = MatchContext(service=service, match=match)
     tabs = st.tabs([view.label for view in VIEWS], key=VIEW_KEY, on_change="rerun")
-    open_view = VIEWS[0].label
     for tab, view in zip(tabs, VIEWS):
         if tab.open:
-            open_view = view.label
             with tab:
                 view.render(ctx)
-
-    render_overview(overview_slot, service.summary(match.match_id), selection(match), open_view)
 
 
 def about_page(service: MatchService, home: StreamlitPage) -> None:

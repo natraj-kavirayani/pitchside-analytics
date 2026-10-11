@@ -29,8 +29,9 @@ Built with `statsbombpy` for data access and `mplsoccer` for pitch plotting.
   substitution timeline.
 - **Match overview**: each team's xG, shots, shots on target, passes and
   pass completion side by side. It shows above the tabs when you pick a
-  match, shrinks to a **Match overview** button once you open a tab, and
-  the button brings it back.
+  match. **Minimize** (or opening another tab) shrinks it smoothly into a
+  pill-shaped **Match overview** button while the tabs and chart move up
+  into the space; the pill grows it back.
 
 **About** at the bottom of the sidebar opens a separate page about the
 project (also at `/about`); "Back to matches" returns to the same match

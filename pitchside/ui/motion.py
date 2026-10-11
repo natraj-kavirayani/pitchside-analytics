@@ -15,7 +15,11 @@ Two things switch all of it off:
   injected at all.
 
 Either way nothing is left half-animated: content starts visible and the
-animations only ever play it in.
+animations only ever play it in. Entrance animations use fill mode
+"backwards": they hold their first frame during any delay, then hand the
+element back to its own styles, which their last frame matches. That
+leaves those properties free for transitions, such as the match
+overview shrinking into its pill.
 
 How tab transitions work: Streamlit 1.64 mounts a fresh tab panel
 element each time a tab is selected, and a CSS animation runs whenever
@@ -26,6 +30,12 @@ every switch with no JavaScript.
 from dataclasses import dataclass
 
 import streamlit as st
+
+from pitchside.ui.overview import CLOSED as OVERVIEW_CLOSED
+from pitchside.ui.overview import MINIMIZE as OVERVIEW_MINIMIZE
+from pitchside.ui.overview import OPEN as OVERVIEW_OPEN
+from pitchside.ui.overview import PILL as OVERVIEW_PILL
+from pitchside.ui.overview import STRIP as OVERVIEW_STRIP
 
 EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)"  # fast start, gentle settle
 EASE_SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)"  # slight overshoot
@@ -84,7 +94,7 @@ class Animation:
         delay = f"{self.delay_ms}ms"
         if self.stagger_ms:
             delay = f"calc({self.delay_ms}ms + var(--i, 0) * {self.stagger_ms}ms)"
-        rule = f"animation: {self.keyframes} {self.duration_ms}ms {self.easing} {delay} both;"
+        rule = f"animation: {self.keyframes} {self.duration_ms}ms {self.easing} {delay} backwards;"
         if self.origin:
             rule += f" transform-origin: {self.origin}; transform-box: fill-box;"
         return f"{self.selector} {{ {rule} }}"
@@ -92,15 +102,32 @@ class Animation:
 
 @dataclass(frozen=True)
 class Transition:
-    """A hover/focus transition: ``properties`` ease over ``duration_ms``."""
+    """How ``properties`` change on elements matching ``selector``.
+
+    Each property eases over ``duration_ms``, unless ``timing`` gives it
+    its own ``(property, duration_ms, delay_ms)``. Hover and focus
+    feedback uses the plain form; the match overview staggers its
+    properties so the box changes shape while its content fades.
+    """
 
     selector: str
     properties: tuple[str, ...]
     duration_ms: int = 180
+    timing: tuple[tuple[str, int, int], ...] = ()
+
+    def _timing(self, prop: str) -> tuple[int, int]:
+        return next(((d, delay) for p, d, delay in self.timing if p == prop), (self.duration_ms, 0))
+
+    @property
+    def settle_ms(self) -> int:
+        return max(sum(self._timing(p)) for p in self.properties)
 
     def css(self) -> str:
-        parts = ", ".join(f"{p} {self.duration_ms}ms {EASE_OUT}" for p in self.properties)
-        return f"{self.selector} {{ transition: {parts}; }}"
+        parts = []
+        for prop in self.properties:
+            duration, delay = self._timing(prop)
+            parts.append(f"{prop} {duration}ms {EASE_OUT}" + (f" {delay}ms" if delay else ""))
+        return f"{self.selector} {{ transition: {', '.join(parts)}; }}"
 
 
 def staggered(item: str) -> tuple[Animation, ...]:
@@ -134,8 +161,6 @@ ANIMATIONS: tuple[Animation, ...] = (
     Animation(".ps-title", "ps-slide-in", 520, delay_ms=120),
     # Match summary: each row rises, then its bars grow out from the middle.
     Animation(".ps-summary", "ps-fade", 300),
-    # ...and when it shrinks to its button, the button rises into place.
-    Animation(".st-key-overview_button", "ps-rise", 320),
     Animation(".ps-stat", "ps-rise", 420, delay_ms=80, stagger_ms=70, max_index=4),
     Animation(".ps-bar-left", "ps-grow-x", 650, delay_ms=180, stagger_ms=70, max_index=4,
               origin="right"),
@@ -143,7 +168,43 @@ ANIMATIONS: tuple[Animation, ...] = (
               origin="left"),
 )
 
+# How long the overview takes to change shape between strip and pill.
+MORPH_MS = 520
+# What the box itself animates while it changes shape.
+_MORPH = ("width", "height", "padding", "border-radius", "border-color")
+
+
+def _morph(selector: str, fade_ms: int, fade_delay_ms: int, hide_delay_ms: int) -> Transition:
+    """The box changes shape over MORPH_MS while its opacity fades on its
+    own schedule; visibility flips at ``hide_delay_ms``, so the hidden
+    state can't be clicked or focused."""
+    return Transition(selector, (*_MORPH, "opacity", "visibility"), MORPH_MS, timing=(
+        ("opacity", fade_ms, fade_delay_ms), ("visibility", 0, hide_delay_ms)))
+
+
+# Strip <-> pill. A rule's timing applies when entering its state.
+# Closing: the content fades first, the box shrinks to the pill's size,
+# and the pill appears in its place as it arrives. Opening runs the
+# other way round. The content below moves with the box's height.
+OVERVIEW_TRANSITIONS: tuple[Transition, ...] = (
+    _morph(f"{OVERVIEW_OPEN} {OVERVIEW_STRIP}", fade_ms=160, fade_delay_ms=0, hide_delay_ms=0),
+    _morph(f"{OVERVIEW_CLOSED} {OVERVIEW_STRIP}", fade_ms=160, fade_delay_ms=MORPH_MS - 160,
+           hide_delay_ms=MORPH_MS),
+    Transition(f"{OVERVIEW_OPEN} {OVERVIEW_STRIP} > *", ("opacity",), 260,
+               timing=(("opacity", 260, 260),)),
+    Transition(f"{OVERVIEW_CLOSED} {OVERVIEW_STRIP} > *", ("opacity",), 140),
+    Transition(f"{OVERVIEW_OPEN} {OVERVIEW_PILL}", ("opacity", "visibility"), 120,
+               timing=(("visibility", 0, 120),)),
+    Transition(f"{OVERVIEW_CLOSED} {OVERVIEW_PILL}", ("opacity", "visibility"), 200,
+               timing=(("opacity", 200, MORPH_MS - 200),)),
+    Transition(f"{OVERVIEW_OPEN} {OVERVIEW_MINIMIZE}", ("opacity", "visibility"), 200,
+               timing=(("opacity", 200, MORPH_MS - 200),)),
+    Transition(f"{OVERVIEW_CLOSED} {OVERVIEW_MINIMIZE}", ("opacity", "visibility"), 120,
+               timing=(("visibility", 0, 120),)),
+)
+
 TRANSITIONS: tuple[Transition, ...] = (
+    *OVERVIEW_TRANSITIONS,
     Transition('[data-testid="stTabs"] [role="tab"]', ("color", "background-color")),
     Transition(SOLID_BUTTON, ("transform", "box-shadow", "background-color")),
     Transition(TEXT_BUTTON, ("color", "text-decoration-color")),
@@ -171,6 +232,9 @@ def motion_css() -> str:
     transitions = "\n".join(t.css() for t in TRANSITIONS)
     return (
         "<style>\n@media (prefers-reduced-motion: no-preference) {\n"
+        # Lets height animate to and from "auto" (Chromium-based browsers;
+        # elsewhere the height changes at once and the rest still animates).
+        ":root { interpolate-size: allow-keywords; }\n"
         f"{keyframes}\n{rules}\n{transitions}\n{HOVER_CSS}\n"
         "}\n</style>"
     )
