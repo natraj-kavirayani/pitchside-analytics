@@ -20,6 +20,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   The sample-league browser tests decide the build.
 - `pyproject.toml` describes the package (`[project]`), and the minimum
   Streamlit version is now 1.64, which the app needs.
+- Removed a stale copy of the CI workflow from the repo root.
 
 ## [0.9.0] - 2026-10-02
 
