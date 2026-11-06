@@ -5,8 +5,12 @@ Every plot function returns a matplotlib Figure, so callers (Streamlit,
 scripts, notebooks) can render or save it however they like.
 """
 
+from typing import cast
+
 import matplotlib.pyplot as plt
 import pandas as pd
+from matplotlib.axes import Axes
+from matplotlib.figure import Figure
 from mplsoccer import Pitch, VerticalPitch
 
 from pitchside.viz.palette import INK, MUTED_INK, SURFACE, TEAM_COLORS
@@ -25,7 +29,19 @@ def _vertical_pitch() -> VerticalPitch:
     return VerticalPitch(pitch_type="statsbomb", pitch_color=SURFACE, line_color="#c7d5cc")
 
 
-def plot_shot_map(shots: pd.DataFrame, title: str = "Shot Map") -> plt.Figure:
+def _draw(pitch: Pitch | VerticalPitch, figsize: tuple[float, float]) -> tuple[Figure, Axes]:
+    """Draw ``pitch`` on a new figure, with the app's background.
+
+    mplsoccer's draw() is unannotated, and can also draw onto an existing
+    Axes (returning None) or a grid (returning an array of Axes); drawn
+    once on a new figure, it returns one Figure and one Axes.
+    """
+    fig, ax = cast(tuple[Figure, Axes], pitch.draw(figsize=figsize))
+    fig.set_facecolor(SURFACE)
+    return fig, ax
+
+
+def plot_shot_map(shots: pd.DataFrame, title: str = "Shot Map") -> Figure:
     """Bubble map of shots: size = expected goals (xG), red = goal.
 
     Args:
@@ -34,8 +50,7 @@ def plot_shot_map(shots: pd.DataFrame, title: str = "Shot Map") -> plt.Figure:
         title: Chart title.
     """
     pitch = _pitch()
-    fig, ax = pitch.draw(figsize=(10, 7))
-    fig.set_facecolor(SURFACE)
+    fig, ax = _draw(pitch, figsize=(10, 7))
 
     if shots.empty:
         ax.set_title("No shot data", color="white")
@@ -61,7 +76,7 @@ def plot_shot_map(shots: pd.DataFrame, title: str = "Shot Map") -> plt.Figure:
     return fig
 
 
-def plot_pass_map(passes: pd.DataFrame, title: str = "Pass Map") -> plt.Figure:
+def plot_pass_map(passes: pd.DataFrame, title: str = "Pass Map") -> Figure:
     """Arrows from each pass's start to end location; green = completed, red = not.
 
     Args:
@@ -70,8 +85,7 @@ def plot_pass_map(passes: pd.DataFrame, title: str = "Pass Map") -> plt.Figure:
         title: Chart title.
     """
     pitch = _pitch()
-    fig, ax = pitch.draw(figsize=(10, 7))
-    fig.set_facecolor(SURFACE)
+    fig, ax = _draw(pitch, figsize=(10, 7))
 
     if passes.empty:
         ax.set_title("No pass data", color="white")
@@ -96,7 +110,7 @@ def plot_pass_map(passes: pd.DataFrame, title: str = "Pass Map") -> plt.Figure:
     return fig
 
 
-def plot_heatmap(events: pd.DataFrame, title: str = "Touch Heatmap") -> plt.Figure:
+def plot_heatmap(events: pd.DataFrame, title: str = "Touch Heatmap") -> Figure:
     """Density (KDE) heatmap of where on the pitch events happened.
 
     Args:
@@ -104,8 +118,7 @@ def plot_heatmap(events: pd.DataFrame, title: str = "Touch Heatmap") -> plt.Figu
         title: Chart title.
     """
     pitch = _pitch()
-    fig, ax = pitch.draw(figsize=(10, 7))
-    fig.set_facecolor(SURFACE)
+    fig, ax = _draw(pitch, figsize=(10, 7))
 
     located = events.dropna(subset=["location"])
     if located.empty:
@@ -120,7 +133,7 @@ def plot_heatmap(events: pd.DataFrame, title: str = "Touch Heatmap") -> plt.Figu
     return fig
 
 
-def plot_pass_network(nodes: pd.DataFrame, edges: pd.DataFrame, title: str = "Pass Network") -> plt.Figure:
+def plot_pass_network(nodes: pd.DataFrame, edges: pd.DataFrame, title: str = "Pass Network") -> Figure:
     """Team pass network on a vertical pitch.
 
     Each player is drawn at their average position, sized by passes made,
@@ -134,8 +147,7 @@ def plot_pass_network(nodes: pd.DataFrame, edges: pd.DataFrame, title: str = "Pa
         title: Chart title.
     """
     pitch = _vertical_pitch()
-    fig, ax = pitch.draw(figsize=(7, 10))
-    fig.set_facecolor(SURFACE)
+    fig, ax = _draw(pitch, figsize=(7, 10))
 
     if nodes.empty:
         ax.set_title("No pass data", color="white")
@@ -168,7 +180,7 @@ def plot_pass_network(nodes: pd.DataFrame, edges: pd.DataFrame, title: str = "Pa
     return fig
 
 
-def plot_xg_timeline(timeline: pd.DataFrame, title: str = "xG timeline") -> plt.Figure:
+def plot_xg_timeline(timeline: pd.DataFrame, title: str = "xG timeline") -> Figure:
     """Step chart of each team's cumulative expected goals over the match.
 
     Goals are marked with a larger ringed dot. Each line ends in a direct

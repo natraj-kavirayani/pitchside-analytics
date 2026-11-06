@@ -77,6 +77,7 @@ def test_timeline_goals_match_the_scoreline(sample_service, match):
 @pytest.mark.integration
 def test_shootout_match_keeps_kicks_out_of_everything_but_the_shootout(sample_service):
     match = next(m for m in MATCHES if m.shootout)
+    assert match.shootout is not None
     kicks = sample_service.shootout(match.match_id)
     assert len(kicks) == sum(len(team) for team in match.shootout)
     assert (sample_service.shots(match.match_id)["period"] < 5).all()

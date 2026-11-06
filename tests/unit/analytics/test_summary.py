@@ -6,6 +6,11 @@ import pytest
 from pitchside.analytics.summary import SUMMARY_COLUMNS, team_summary
 
 
+def team_row(events: pd.DataFrame, team: str) -> dict:
+    """One team's summary row, as a plain dict of column -> value."""
+    return team_summary(events).set_index("team").to_dict("index")[team]
+
+
 @pytest.mark.unit
 def test_summary_has_one_row_per_team_sorted(events_frame):
     summary = team_summary(events_frame)
@@ -15,7 +20,7 @@ def test_summary_has_one_row_per_team_sorted(events_frame):
 
 @pytest.mark.unit
 def test_summary_counts_shots_xg_and_passes(events_frame):
-    home = team_summary(events_frame).set_index("team").loc["Home Team"]
+    home = team_row(events_frame, "Home Team")
     assert home["shots"] == 1
     assert home["on_target"] == 1, "A goal is on target."
     assert home["xg"] == pytest.approx(0.35)
@@ -25,7 +30,7 @@ def test_summary_counts_shots_xg_and_passes(events_frame):
 
 @pytest.mark.unit
 def test_summary_off_target_shot_is_not_on_target(events_frame):
-    away = team_summary(events_frame).set_index("team").loc["Away Team"]
+    away = team_row(events_frame, "Away Team")
     assert away["shots"] == 1 and away["on_target"] == 0
 
 
@@ -42,8 +47,8 @@ def test_summary_team_with_no_passes_or_shots_gets_zeros():
         {"type": "Pass", "team": "A", "player": "P", "pass_outcome": float("nan")},
         {"type": "Pressure", "team": "B", "player": "Q"},
     ])
-    b = team_summary(events).set_index("team").loc["B"]
-    assert b[["xg", "shots", "on_target", "passes", "pass_completion"]].tolist() == [0, 0, 0, 0, 0]
+    b = team_row(events, "B")
+    assert [b[col] for col in ["xg", "shots", "on_target", "passes", "pass_completion"]] == [0, 0, 0, 0, 0]
 
 
 @pytest.mark.unit

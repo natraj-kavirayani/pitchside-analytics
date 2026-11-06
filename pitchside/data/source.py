@@ -106,7 +106,22 @@ class CachedSource:
 
     def __init__(self, source: MatchDataSource, maxsize: int = 32) -> None:
         self.source = source
-        self.competitions: Callable[[], pd.DataFrame] = lru_cache(maxsize=1)(source.competitions)
-        self.matches: Callable[[int, int], pd.DataFrame] = lru_cache(maxsize=maxsize)(source.matches)
-        self.events: Callable[[int], pd.DataFrame] = lru_cache(maxsize=maxsize)(source.events)
-        self.lineups: Callable[[int], Lineups] = lru_cache(maxsize=maxsize)(source.lineups)
+        self._competitions: Callable[[], pd.DataFrame] = lru_cache(maxsize=1)(source.competitions)
+        self._matches: Callable[[int, int], pd.DataFrame] = lru_cache(maxsize=maxsize)(source.matches)
+        self._events: Callable[[int], pd.DataFrame] = lru_cache(maxsize=maxsize)(source.events)
+        self._lineups: Callable[[int], Lineups] = lru_cache(maxsize=maxsize)(source.lineups)
+
+    # Real methods rather than the cached functions themselves, so the
+    # signatures match MatchDataSource (keyword arguments included) and
+    # every call reaches the cache positionally, under the same key.
+    def competitions(self) -> pd.DataFrame:
+        return self._competitions()
+
+    def matches(self, competition_id: int, season_id: int) -> pd.DataFrame:
+        return self._matches(competition_id, season_id)
+
+    def events(self, match_id: int) -> pd.DataFrame:
+        return self._events(match_id)
+
+    def lineups(self, match_id: int) -> Lineups:
+        return self._lineups(match_id)
