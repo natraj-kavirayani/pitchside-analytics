@@ -3,15 +3,17 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
-## [Unreleased]
+## [0.10.0] - 2026-11-06
 
-### Fixed
+### Added
 
-- Pass network: each pair of players gets one line for the passes
-  between them in both directions, instead of two lines drawn on top of
-  each other, and pairs with fewer than 3 completed passes get none.
-  The README now says what node positions are: the average position of
-  the passes a player made.
+- A collapsed sidebar opens while the cursor is on its expand arrow and
+  stays open while the cursor is on the sidebar or one of its dropdowns
+  is open; it closes again when the cursor leaves. The page content
+  makes room for it the same way as for an expanded sidebar.
+- Security policy (`SECURITY.md`): how to report a vulnerability
+  privately, what is in scope, and a warning for anyone deploying the
+  app not to set StatsBomb API credentials.
 
 ### Changed
 
@@ -20,7 +22,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   The sample-league browser tests decide the build.
 - `pyproject.toml` describes the package (`[project]`), and the minimum
   Streamlit version is now 1.64, which the app needs.
+- `CachedSource` has real methods with the same signatures as
+  `MatchDataSource`, so type checkers accept it wherever a source is
+  expected. The code and tests now type-check cleanly under Pylance.
 - Removed a stale copy of the CI workflow from the repo root.
+
+### Fixed
+
+- Pass network: each pair of players gets one line for the passes
+  between them in both directions, instead of two lines drawn on top of
+  each other, and pairs with fewer than 3 completed passes get none.
+  The README now says what node positions are: the average position of
+  the passes a player made.
+- Starting XIs showed StatsBomb's placeholder shirt number 0 (used in
+  some older matches) as a real number and sorted those players first.
+  Unknown numbers now show as "N/A" and those players are listed last.
 
 ## [0.9.0] - 2026-10-02
 

@@ -7,7 +7,7 @@ branches. Security fixes go into `main` only and are not backported.
 
 | Version | Supported |
 | ------- | --------- |
-| Latest `main` (0.9.x) | :white_check_mark: |
+| Latest `main` (0.10.x) | :white_check_mark: |
 | Anything older | :x: |
 
 ## Reporting a vulnerability
