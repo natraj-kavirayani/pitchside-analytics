@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from matplotlib.figure import Figure
 
+from pitchside.analytics.lineups import jersey_labels
 from pitchside.service import MatchRef, MatchService
 from pitchside.viz.charts import (
     plot_heatmap,
@@ -117,6 +118,7 @@ def render_match_details(ctx: MatchContext) -> None:
             if xi is None or xi.empty:
                 st.write("Starting XI not available for this match.")
             else:
+                xi = xi.assign(jersey_number=jersey_labels(xi["jersey_number"]))
                 st.dataframe(
                     xi.rename(columns={"player": "Player", "jersey_number": "#", "position": "Position"}),
                     hide_index=True,

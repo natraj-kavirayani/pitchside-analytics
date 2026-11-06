@@ -6,6 +6,7 @@ import pytest
 from pitchside.analytics.lineups import (
     SUBSTITUTION_COLUMNS,
     XI_COLUMNS,
+    jersey_labels,
     managers,
     starting_xi,
     substitutions,
@@ -50,6 +51,27 @@ def test_starting_xi_uses_the_starting_position_not_a_later_one():
         ],
     }])}
     assert starting_xi(lineups)["T"].iloc[0]["position"] == "Left Back"
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("unknown", [0, None, float("nan")])
+def test_starting_xi_marks_unknown_shirt_numbers_missing_and_lists_them_last(unknown):
+    # Older StatsBomb matches record unknown shirt numbers as 0.
+    starter = [{"start_reason": "Starting XI", "position": "Left Back"}]
+    lineups = {"T": pd.DataFrame([
+        {"player_name": "Unknown", "jersey_number": unknown, "positions": starter},
+        {"player_name": "Eleven", "jersey_number": 11, "positions": starter},
+        {"player_name": "One", "jersey_number": 1, "positions": starter},
+    ])}
+    xi = starting_xi(lineups)["T"]
+    assert list(xi["player"]) == ["One", "Eleven", "Unknown"]
+    assert xi["jersey_number"].isna().tolist() == [False, False, True]
+
+
+@pytest.mark.unit
+def test_jersey_labels_show_unknown_numbers_as_not_available():
+    numbers = pd.Series([7, pd.NA, 11], dtype="Int64")
+    assert jersey_labels(numbers).tolist() == ["7", "N/A", "11"]
 
 
 # --- substitutions -----------------------------------------------------------

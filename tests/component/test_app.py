@@ -434,6 +434,21 @@ def test_match_details_show_managers_lineups_and_substitutions(at):
 
 
 @pytest.mark.component
+def test_match_details_show_unknown_shirt_numbers_as_not_available(
+    competitions_frame, matches_frame, events_frame, lineups_dict,
+):
+    lineups = {team: df.copy() for team, df in lineups_dict.items()}
+    lineups["Away Team"]["jersey_number"] = 0  # StatsBomb's "unknown"
+    service = MatchService(InMemorySource(
+        competitions_frame, matches={(2, 44): matches_frame},
+        events={12345: events_frame}, lineups={12345: lineups},
+    ))
+    at = open_view(select_match(app_for(service).run()), "Match details")
+    numbers = sorted(list(table.value["#"]) for table in at.dataframe[:2])
+    assert numbers == [["9", "10"], ["N/A"]]
+
+
+@pytest.mark.component
 def test_match_details_without_lineups_says_so(competitions_frame, matches_frame, events_frame):
     service = MatchService(InMemorySource(
         competitions_frame, matches={(2, 44): matches_frame},
