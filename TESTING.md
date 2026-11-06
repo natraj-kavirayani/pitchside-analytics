@@ -59,10 +59,14 @@ narrowest interface that can show its bugs:
   are the slowest layer, so they are kept few and focused.
 
 Plain `pytest` runs everything that needs neither a network nor a
-server. In CI, the e2e job (both servers, plus the live contract tests)
-only runs once the offline layers pass, and a missing server fails the
-job instead of skipping it, so the pipeline can never be green without
-the browser tests having run.
+server. In CI, the browser tests only run once the offline layers pass,
+in two jobs. The e2e job (sample server) decides the build, and a
+missing server fails it instead of skipping, so the pipeline can never
+be green without the browser tests having run. The live job (live
+server: the user journeys and the live contract tests) depends on
+StatsBomb's data on GitHub, so it can fail for reasons outside this
+code; it is reported but doesn't fail the build, and also runs weekly to
+catch upstream changes in a quiet week.
 
 The e2e tests wait for Streamlit's own "script finished" signal instead
 of fixed sleeps, because every widget change (and every tab click, with

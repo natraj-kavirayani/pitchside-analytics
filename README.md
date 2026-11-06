@@ -104,8 +104,9 @@ deliberately not tested, and how AI was used) is in [TESTING.md](TESTING.md).
 pip install -r requirements.lock
 pytest                    # every offline layer (no network, no server)
 pytest --cov              # same, with coverage of the pitchside package
-pytest -m live            # data contract checks against live StatsBomb data
-pytest -m e2e             # browser tests; needs both servers below
+pytest -m "e2e and not live"  # browser tests on the sample league (port 8502)
+pytest -m live            # everything on live StatsBomb data: data contract
+                          # checks, and the browser journeys (port 8501)
 ```
 
 The e2e tests need two servers: the live app on port 8501 for the user
@@ -121,11 +122,15 @@ Before running them, run `playwright install chromium` once and restart
 any server already running, so the tests check the current code. Locally
 they are skipped with a clear reason when a server is not reachable.
 
-GitHub Actions runs on every push and pull request: first every offline
-layer, then, if those pass, a second job that starts both servers, waits
-for their health checks and runs the e2e and live tests. In CI a missing
-server fails the job instead of skipping, and failed e2e tests upload
-screenshots, Playwright traces and the app logs as a build artifact.
+GitHub Actions runs on every push and pull request, and weekly: first
+every offline layer, then, if those pass, two jobs that each start a
+server, wait for its health check and run their tests. The e2e job runs
+the browser tests on the sample league; it decides whether the build
+passes. The live job runs everything on StatsBomb's live data, which is
+fetched from GitHub and can fail for reasons outside this code, so a
+failure there is reported without failing the build. In CI a missing
+server fails a job instead of skipping, and failed browser tests upload
+screenshots, Playwright traces and the app log as a build artifact.
 
 | Folder | Marker | What it covers |
 | --- | --- | --- |
@@ -133,7 +138,7 @@ screenshots, Playwright traces and the app logs as a build artifact.
 | `tests/integration/` | `integration` | `MatchService` on real sources: the layers agree with each other, caching works through the stack. |
 | `tests/contract/` | `contract` | The sample league, and (with `-m live`) StatsBomb's live data, against the column contract in `pitchside/data/schema.py`. |
 | `tests/component/` | `component` | The whole page via Streamlit's `AppTest`, with the service injected. |
-| `tests/e2e/` | `e2e` | Playwright in a real browser: smoke tests and motion tests on the sample league, user journeys through the 2022 World Cup final on live data. |
+| `tests/e2e/` | `e2e` | Playwright in a real browser: smoke tests and motion tests on the sample league, user journeys through the 2022 World Cup final on live data (also marked `live`). |
 
 ## Deploying
 

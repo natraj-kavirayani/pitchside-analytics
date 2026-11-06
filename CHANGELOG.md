@@ -13,6 +13,12 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
   The README now says what node positions are: the average position of
   the passes a player made.
 
+### Changed
+
+- CI: the browser tests on live StatsBomb data run in their own job,
+  which reports failures without failing the build and also runs weekly.
+  The sample-league browser tests decide the build.
+
 ## [0.9.0] - 2026-10-02
 
 ### Added

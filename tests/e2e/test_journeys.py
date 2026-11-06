@@ -1,7 +1,7 @@
 """
 User journeys in a real browser, on live StatsBomb open data.
 
-Run with: pytest -m e2e
+Run with: pytest -m "e2e and live"
 Requires: streamlit run app.py (running on http://localhost:8501)
 
 A user picks a specific match through the sidebar and checks what they
@@ -16,6 +16,10 @@ import pytest
 from playwright.sync_api import Page, expect
 
 from tests.e2e.pages import open_app, open_tab, select_match
+
+# Live data: CI runs these apart from the sample-server browser tests, so
+# an outage on StatsBomb's side can't fail those.
+pytestmark = pytest.mark.live
 
 # The 2022 World Cup final: a fixed, well-known match in StatsBomb's open
 # data. It ended 3-3 and went to penalties, so it also exercises the
