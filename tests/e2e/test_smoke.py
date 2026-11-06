@@ -40,6 +40,53 @@ def test_sidebar_shows_the_sample_data_source(sample_page: Page):
 
 
 @pytest.mark.e2e
+def test_collapsed_sidebar_shows_while_hovered(sample_page: Page):
+    sidebar = sample_page.get_by_test_id("stSidebar")
+    sidebar.hover()
+    sample_page.get_by_test_id("stSidebarCollapseButton").click()
+    sample_page.mouse.move(800, 500)
+    expect(sidebar).to_have_attribute("aria-expanded", "false")
+    expect(sidebar.get_by_text("Select a match")).not_to_be_in_viewport()
+    wait_for_content_left(sample_page, 0)
+
+    sample_page.get_by_test_id("stExpandSidebarButton").hover()
+    expect(sidebar.get_by_text("Select a match")).to_be_in_viewport()
+    # The page content shrinks to make room, as for an expanded sidebar,
+    # and only the sidebar's own collapse arrow shows, not the expand one.
+    wait_for_content_left(sample_page, sidebar_width(sample_page))
+    expect(sample_page.get_by_test_id("stExpandSidebarButton")).to_have_css("opacity", "0")
+    # Moving from the arrow onto the sidebar (which now covers the arrow)
+    # keeps it open, and so does picking from one of its dropdowns.
+    sample_page.mouse.move(150, 600)
+    expect(sample_page.get_by_test_id("stExpandSidebarButton")).to_have_css("opacity", "0")
+    sidebar.get_by_role("combobox", name="Country").click()
+    option = sample_page.get_by_role("option").first
+    option.hover()
+    expect(sidebar.get_by_text("Select a match")).to_be_in_viewport()
+    option.click()
+
+    sample_page.mouse.move(800, 500)
+    expect(sidebar.get_by_text("Select a match")).not_to_be_in_viewport()
+    wait_for_content_left(sample_page, 0)
+    expect(sample_page.get_by_test_id("stExpandSidebarButton")).to_have_css("opacity", "1")
+
+
+def sidebar_width(page: Page) -> float:
+    box = page.get_by_test_id("stSidebar").bounding_box()
+    assert box is not None
+    return box["width"]
+
+
+def wait_for_content_left(page: Page, left: float) -> None:
+    """Wait for the page content to start ``left`` pixels from the edge."""
+    page.wait_for_function(
+        "left => Math.round(document.querySelector('[data-testid=stMain]')"
+        ".getBoundingClientRect().left) === Math.round(left)",
+        arg=left,
+    )
+
+
+@pytest.mark.e2e
 @pytest.mark.parametrize("label", [v.label for v in VIEWS])
 def test_every_tab_opens_with_content(sample_page: Page, label: str):
     """Checked one tab per test, so a single broken tab fails on its own."""

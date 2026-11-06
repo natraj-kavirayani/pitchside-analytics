@@ -52,6 +52,31 @@ LOGO_SVG = (
 TAB = '[data-testid="stTabs"] [role="tab"]'
 TAB_INDICATOR = ".react-aria-SelectionIndicator"
 
+# A collapsed sidebar the viewer is peeking at: shown while the cursor is
+# on the expand arrow (the sidebar then covers the arrow, so hovering the
+# sidebar keeps it open) and while one of its dropdowns is open (the
+# option list is rendered outside the sidebar, at the end of <body>).
+# One :is() rather than a selector list, so moving between those states
+# never stops the match and restarts the motion layer's entrance.
+_COLLAPSED_SIDEBAR = 'section[data-testid="stSidebar"][aria-expanded="false"]'
+SIDEBAR_PEEK = (
+    ":is("
+    f'.stApp:has([data-testid="stExpandSidebarButton"]:hover) {_COLLAPSED_SIDEBAR}, '
+    f"{_COLLAPSED_SIDEBAR}:hover, "
+    f'body:has([role="listbox"]) {_COLLAPSED_SIDEBAR}:focus-within'
+    ")"
+)
+# The expand arrow during those same states. It sits in the header, which
+# moves right with the page content, so it would show beside the open
+# sidebar's own collapse arrow. Spelled out per state rather than built
+# from SIDEBAR_PEEK, because CSS doesn't allow :has() inside :has().
+_EXPAND_ARROW = '[data-testid="stExpandSidebarButton"]'
+EXPAND_ARROW_WHILE_PEEKING = ", ".join([
+    f"{_EXPAND_ARROW}:hover",
+    f".stApp:has({_COLLAPSED_SIDEBAR}:hover) {_EXPAND_ARROW}",
+    f'body:has([role="listbox"]) .stApp:has({_COLLAPSED_SIDEBAR}:focus-within) {_EXPAND_ARROW}',
+])
+
 BASE_CSS = textwrap.dedent("""
     /* --- Font -----------------------------------------------------
        Aptos Mono ships with Microsoft Office/Windows, not the web, so
@@ -84,6 +109,29 @@ BASE_CSS = textwrap.dedent("""
         background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%);
     }
 
+    /* --- Hover to peek at a collapsed sidebar ----------------------
+       When it shows is set by the selector, defined above this stylesheet.
+       Collapsed, Streamlit keeps the sidebar in the page at zero width,
+       slid off to the left. Giving it back its width makes the page
+       content shrink to make room, as if it had been expanded, and grow
+       back when it collapses again.
+
+       It opens at once, without a transition. The expand arrow sits in the
+       header, which moves right with the page content, so a sidebar that
+       widened gradually would slide the arrow out from under the cursor
+       before covering the cursor itself, and close again. Closing keeps
+       Streamlit's own width and slide transitions. */
+    SIDEBAR_PEEK {
+        min-width: 300px !important;
+        max-width: 300px !important;
+        transform: none !important;
+        transition-property: none !important;
+    }
+    /* Hidden with opacity, not visibility, so it keeps its hover. */
+    EXPAND_ARROW_WHILE_PEEKING {
+        opacity: 0;
+    }
+
     /* --- Pill-shaped selectboxes ------------------------------------ */
     div[data-baseweb="select"] > div {
         border-radius: 999px !important;
@@ -112,7 +160,9 @@ BASE_CSS = textwrap.dedent("""
     [data-testid="stImage"] img {
         border-radius: 12px;
     }
-""").strip()
+""").strip().replace(
+    "EXPAND_ARROW_WHILE_PEEKING", EXPAND_ARROW_WHILE_PEEKING,
+).replace("SIDEBAR_PEEK", SIDEBAR_PEEK)
 
 
 def tab_accent_css(accents: Sequence[str]) -> str:

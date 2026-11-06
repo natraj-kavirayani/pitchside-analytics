@@ -36,6 +36,7 @@ from pitchside.ui.overview import MINIMIZE as OVERVIEW_MINIMIZE
 from pitchside.ui.overview import OPEN as OVERVIEW_OPEN
 from pitchside.ui.overview import PILL as OVERVIEW_PILL
 from pitchside.ui.overview import STRIP as OVERVIEW_STRIP
+from pitchside.ui.theme import SIDEBAR_PEEK
 
 EASE_OUT = "cubic-bezier(0.16, 1, 0.3, 1)"  # fast start, gentle settle
 EASE_SPRING = "cubic-bezier(0.34, 1.56, 0.64, 1)"  # slight overshoot
@@ -159,6 +160,10 @@ ANIMATIONS: tuple[Animation, ...] = (
     Animation(".ps-logo-bar", "ps-grow-y", 520, delay_ms=200, stagger_ms=110, max_index=2,
               easing=EASE_SPRING, origin="bottom"),
     Animation(".ps-title", "ps-slide-in", 520, delay_ms=120),
+    # A collapsed sidebar opens at once when hovered (see theme.py); its
+    # contents fade in so it doesn't just appear. A fade, not a slide:
+    # a dropdown clicked while still moving doesn't open.
+    Animation(f'{SIDEBAR_PEEK} [data-testid="stSidebarContent"]', "ps-fade", 200),
     # Match summary: each row rises, then its bars grow out from the middle.
     Animation(".ps-summary", "ps-fade", 300),
     Animation(".ps-stat", "ps-rise", 420, delay_ms=80, stagger_ms=70, max_index=4),
