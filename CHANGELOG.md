@@ -18,6 +18,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 - CI: the browser tests on live StatsBomb data run in their own job,
   which reports failures without failing the build and also runs weekly.
   The sample-league browser tests decide the build.
+- `pyproject.toml` describes the package (`[project]`), and the minimum
+  Streamlit version is now 1.64, which the app needs.
 
 ## [0.9.0] - 2026-10-02
 
