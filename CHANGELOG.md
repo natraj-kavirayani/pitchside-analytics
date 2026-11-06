@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 Format loosely follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [Unreleased]
+
+### Fixed
+
+- Pass network: each pair of players gets one line for the passes
+  between them in both directions, instead of two lines drawn on top of
+  each other, and pairs with fewer than 3 completed passes get none.
+  The README now says what node positions are: the average position of
+  the passes a player made.
+
 ## [0.9.0] - 2026-10-02
 
 ### Added

@@ -98,7 +98,7 @@ def test_plot_pass_network_structure():
     ])
     edges = pd.DataFrame([
         {
-            "player": "Player A", "pass_recipient": "Player B", "count": 5,
+            "player1": "Player A", "player2": "Player B", "count": 5,
             "x1": 40.0, "y1": 30.0, "x2": 60.0, "y2": 40.0,
         }
     ])
@@ -110,7 +110,7 @@ def test_plot_pass_network_structure():
 @pytest.mark.unit
 def test_plot_pass_network_uses_vertical_pitch():
     nodes = pd.DataFrame([{"player": "Player A", "x": 40.0, "y": 30.0, "passes": 1}])
-    edges = pd.DataFrame(columns=["player", "pass_recipient", "count", "x1", "y1", "x2", "y2"])
+    edges = pd.DataFrame(columns=["player1", "player2", "count", "x1", "y1", "x2", "y2"])
     fig = plot_pass_network(nodes, edges, title="Test Network")
     # The pass network is documented (and expected by the pass network view's layout) to
     # use the vertical pitch orientation, not the default horizontal one.
@@ -147,7 +147,7 @@ def test_plot_xg_timeline_empty():
 @pytest.mark.unit
 def test_plot_pass_network_empty_nodes():
     empty = pd.DataFrame(columns=["player", "x", "y", "passes"])
-    empty_edges = pd.DataFrame(columns=["player", "pass_recipient", "count", "x1", "y1", "x2", "y2"])
+    empty_edges = pd.DataFrame(columns=["player1", "player2", "count", "x1", "y1", "x2", "y2"])
     fig = plot_pass_network(empty, empty_edges, title="Empty Test")
     assert isinstance(fig, Figure)
     assert fig.axes[0].get_title() == "No pass data"

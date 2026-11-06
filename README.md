@@ -19,10 +19,11 @@ Built with `statsbombpy` for data access and `mplsoccer` for pitch plotting.
   with goals marked. It shows at a glance whether a result was deserved.
   In the Algeria 1-1 Angola match above, Angola's single big chance
   (0.8 xG) outweighed all of Algeria's shots combined.
-- **Pass network**: each player at their average on-the-ball position,
-  sized by passes made, linked to the teammates they combined with most.
-  Only passes before the team's first substitution are used, so the
-  shape reflects one settled XI.
+- **Pass network**: each player at the average position of the passes
+  they made, sized by how many. A line joins two players who completed
+  at least 3 passes between them (both directions together), thicker
+  for more. Only passes before the team's first substitution are used,
+  so the shape reflects one settled XI.
 - **Shot map, pass map, touch heatmap**: where the shots, passes and
   touches happened.
 - **Match details**: starting XIs with positions, managers and a

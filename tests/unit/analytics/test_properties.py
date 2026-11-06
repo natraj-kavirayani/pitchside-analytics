@@ -14,7 +14,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from pitchside.analytics.passing import pass_network, passes
+from pitchside.analytics.passing import MIN_PAIR_PASSES, pass_network, passes
 from pitchside.analytics.shots import SHOOTOUT_PERIOD, match_shots, shootout, xg_timeline
 from pitchside.analytics.summary import team_summary
 from pitchside.viz.tables import split_share
@@ -101,8 +101,9 @@ def test_pass_network_counts_every_pass_once(events, team, until_first_sub):
         assert nodes["passes"].sum() == len(team_passes)
     completed = team_passes["pass_outcome"].isna().sum()
     assert edges["count"].sum() <= completed
-    assert set(edges["player"]) <= set(nodes["player"])
-    assert set(edges["pass_recipient"]) <= set(nodes["player"])
+    assert (edges["count"] >= MIN_PAIR_PASSES).all()
+    assert (edges["player1"] < edges["player2"]).all(), "Each pair appears once, in alphabetical order."
+    assert set(edges["player1"]) | set(edges["player2"]) <= set(nodes["player"])
 
 
 @pytest.mark.unit

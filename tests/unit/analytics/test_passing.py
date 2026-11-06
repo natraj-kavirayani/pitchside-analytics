@@ -3,7 +3,14 @@
 import pandas as pd
 import pytest
 
-from pitchside.analytics.passing import EDGE_COLUMNS, NODE_COLUMNS, pass_network, passers, passes
+from pitchside.analytics.passing import (
+    EDGE_COLUMNS,
+    MIN_PAIR_PASSES,
+    NODE_COLUMNS,
+    pass_network,
+    passers,
+    passes,
+)
 
 
 # --- passes ------------------------------------------------------------------
@@ -53,16 +60,14 @@ def test_passers_lists_each_passer_once_sorted(events_frame):
 
 @pytest.mark.unit
 def test_pass_network_until_first_sub(events_frame):
-    nodes, edges = pass_network(events_frame, team="Home Team", until_first_sub=True)
+    nodes, edges = pass_network(events_frame, team="Home Team", until_first_sub=True, min_passes=1)
 
     # Passes at minute 15 and 25 are included; minute 70 pass (after the
     # minute-60 substitution) must be filtered out.
     assert set(nodes["player"]) == {"Player A", "Player B"}
 
     assert len(edges) == 1
-    assert edges.iloc[0]["player"] == "Player A"
-    assert edges.iloc[0]["pass_recipient"] == "Player B"
-    assert edges.iloc[0]["count"] == 1
+    assert edges.iloc[0][["player1", "player2", "count"]].tolist() == ["Player A", "Player B", 1]
 
 
 @pytest.mark.unit
@@ -94,6 +99,39 @@ def test_pass_network_edge_to_player_without_own_passes_is_dropped():
     _, edges = pass_network(events, team="T")
     assert edges.empty
     assert list(edges.columns) == EDGE_COLUMNS
+
+
+def _pass(passer: str, recipient: str, minute: int = 1) -> dict:
+    return {"type": "Pass", "team": "T", "player": passer, "location": [10.0, 20.0],
+            "pass_outcome": float("nan"), "pass_recipient": recipient, "minute": minute}
+
+
+@pytest.mark.unit
+def test_pass_network_combines_both_directions_into_one_edge():
+    events = pd.DataFrame([_pass("B", "A"), _pass("A", "B"), _pass("A", "B")])
+    _, edges = pass_network(events, team="T")
+    assert edges[["player1", "player2", "count"]].values.tolist() == [["A", "B", 3]]
+
+
+@pytest.mark.unit
+def test_pass_network_leaves_out_pairs_below_the_minimum():
+    # A-B reach the minimum and A-C fall one short. Each pair includes a
+    # return pass, so every player makes a pass and has a node.
+    events = pd.DataFrame(
+        [_pass("A", "B")] * (MIN_PAIR_PASSES - 1) + [_pass("B", "A")]
+        + [_pass("A", "C")] * (MIN_PAIR_PASSES - 2) + [_pass("C", "A")]
+    )
+    _, edges = pass_network(events, team="T")
+    assert edges[["player1", "player2"]].values.tolist() == [["A", "B"]]
+    _, all_edges = pass_network(events, team="T", min_passes=1)
+    assert len(all_edges) == 2
+
+
+@pytest.mark.unit
+def test_pass_network_ignores_passes_to_oneself():
+    events = pd.DataFrame([_pass("A", "A")] * MIN_PAIR_PASSES)
+    _, edges = pass_network(events, team="T")
+    assert edges.empty
 
 
 @pytest.mark.unit
